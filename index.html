@@ -134,12 +134,11 @@
         document.getElementById('dashboard').style.display = 'block';
         document.getElementById('user-name').textContent = user.username;
         document.getElementById('user-role').textContent = `Role: ${user.role}`;
-        
         if (user.role === 'coach') {
           document.getElementById('coach-controls').style.display = 'block';
           document.getElementById('message-item').style.display = 'block';
           updateAthleteSelect(user.team); // Filter athletes by team
-          currentAthlete = 'jon'; // Default to the first athlete
+          currentAthlete = users.find(u => u.team === user.team && u.role === 'athlete').username;
           renderChart(currentAthlete, 'biceps', 'line');
         } else if (user.role === 'admin') {
           document.getElementById('admin-controls').style.display = 'block';
