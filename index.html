@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>UNC Athletics | Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Login Container -->
+  <div class="login-container">
+    <div class="login-box">
+      <img src="assets/unc-logo.png" alt="UNC Logo" class="logo">
+      <h2>UNC Athletics Login</h2>
+      <form id="login-form">
+        <div class="input-group">
+          <ion-icon name="mail-outline"></ion-icon>
+          <input type="email" id="email" placeholder="UNC Email" required>
+        </div>
+
+        <div class="input-group">
+          <ion-icon name="lock-closed-outline"></ion-icon>
+          <input type="password" id="password" placeholder="Password" required>
+        </div>
+
+        <button type="submit" class="login-btn">Login</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dashboard (hidden until login) -->
+  <div class="dashboard" id="dashboard" style="display:none;">
+
+    <!-- Navigation Bar -->
+    <div class="navbar">
+      <button class="profile-btn" onclick="toggleSidebar()">
+        <ion-icon name="person-circle-outline"></ion-icon>
+      </button>
+      <h3 id="user-name">User</h3>
+      <p id="user-role">Role: Athlete</p>
+      <button class="signout-btn" onclick="signOut()">Sign Out</button>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+      <ul>
+        <li onclick="showPage('dashboard')">Dashboard</li>
+        <li onclick="showPage('profile')">Profile</li>
+        <li onclick="showPage('statistics')">Statistics</li>
+        <li onclick="showPage('settings')">Settings</li>
+      </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div id="athlete-content">
+      <h4>Your Strength Data</h4>
+
+      <!-- Muscle Selection -->
+      <label for="muscle-select">Select Muscle Group:</label>
+      <select id="muscle-select">
+        <option value="biceps" selected>Biceps</option>
+        <option value="triceps">Triceps</option>
+        <option value="quads">Quads</option>
+        <option value="hamstrings">Hamstrings</option>
+      </select>
+
+      <!-- Graph Type Selection -->
+      <label for="graph-type">Select Graph Type:</label>
+      <select id="graph-type">
+        <option value="line" selected>Line Chart</option>
+        <option value="bar">Bar Chart</option>
+      </select>
+
+      <canvas id="strengthChart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const users = [
+      { username: 'jon', role: 'athlete', email: 'jon@unc.edu', password: 'jon' },
+      { username: 'ron', role: 'athlete', email: 'ron@unc.edu', password: 'ron' }
+    ];
+
+    const strengthData = {
+      jon: { biceps: [70, 72, 75, 78], triceps: [60, 62, 65, 68], quads: [150, 155, 160, 165], hamstrings: [90, 95, 100, 105] },
+      ron: { biceps: [65, 68, 71, 75], triceps: [58, 60, 63, 67], quads: [140, 145, 150, 155], hamstrings: [85, 88, 92, 96] }
+    };
+
+    let currentUser = null;
+    let chartInstance = null;
+
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const user = users.find(u => u.email === email && u.password === password);
+
+      if (user) {
+        currentUser = user.username;
+        document.querySelector('.login-container').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+        document.getElementById('user-name').textContent = user.username;
+        document.getElementById('user-role').textContent = `Role: ${user.role}`;
+        renderChart(currentUser, 'biceps', 'line');
+      } else {
+        alert('Invalid credentials, try again.');
+      }
+    });
+
+    document.getElementById('muscle-select').addEventListener('change', updateChart);
+    document.getElementById('graph-type').addEventListener('change', updateChart);
+
+    function updateChart() {
+      const selectedMuscle = document.getElementById('muscle-select').value;
+      const selectedGraphType = document.getElementById('graph-type').value;
+      renderChart(currentUser, selectedMuscle, selectedGraphType);
+    }
+
+    function renderChart(athlete, muscle, chartType) {
+      if (!strengthData[athlete]) return;
+      const ctx = document.getElementById('strengthChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+      
+      chartInstance = new Chart(ctx, {
+        type: chartType,
+        data: {
+          labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+          datasets: [{
+            label: muscle.charAt(0).toUpperCase() + muscle.slice(1),
+            data: strengthData[athlete][muscle] || [0, 0, 0, 0],
+            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+            borderColor: 'rgba(0, 0, 0, 1)',
+            borderWidth: 2,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    function signOut() {
+      document.getElementById('dashboard').style.display = 'none';
+      document.querySelector('.login-container').style.display = 'flex';
+    }
+
+    // Sidebar Toggle
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('show');
+    }
+
+    // Show selected page
+    function showPage(page) {
+      alert(`You clicked on ${page} page!`);
+    }
+  </script>
+
+</body>
+</html>
