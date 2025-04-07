@@ -52,12 +52,13 @@
         <li onclick="showPage('profile')">Profile</li>
         <li onclick="showPage('statistics')">Statistics</li>
         <li onclick="showPage('settings')">Settings</li>
+        <li id="message-item" onclick="showMessages()" style="display:none;">Messages</li> <!-- Visible only to coaches -->
       </ul>
     </div>
 
     <!-- Main Content -->
     <div id="athlete-content">
-      <h4>Your Strength Data</h4>
+      <h4 id="athlete-name">Your Strength Data</h4>
 
       <!-- Muscle Selection -->
       <label for="muscle-select">Select Muscle Group:</label>
@@ -77,20 +78,48 @@
 
       <canvas id="strengthChart"></canvas>
     </div>
+
+    <!-- Coach Athlete Selection (only for coaches) -->
+    <div id="coach-controls" style="display:none;">
+      <label for="athlete-select">Select Athlete:</label>
+      <select id="athlete-select">
+        <!-- Options populated by JavaScript -->
+      </select>
+    </div>
+
+    <!-- Admin Team and Athlete Selection (only for admin) -->
+    <div id="admin-controls" style="display:none;">
+      <label for="team-select">Select Team:</label>
+      <select id="team-select">
+        <option value="A">Team A</option>
+        <option value="B">Team B</option>
+      </select>
+      
+      <label for="admin-athlete-select">Select Athlete:</label>
+      <select id="admin-athlete-select">
+        <!-- Options populated by JavaScript -->
+      </select>
+    </div>
   </div>
 
   <script>
     const users = [
-      { username: 'jon', role: 'athlete', email: 'jon@unc.edu', password: 'jon' },
-      { username: 'ron', role: 'athlete', email: 'ron@unc.edu', password: 'ron' }
+      { username: 'jon', role: 'athlete', email: 'jon@unc.edu', password: 'jon', team: 'A' },
+      { username: 'ron', role: 'athlete', email: 'ron@unc.edu', password: 'ron', team: 'A' },
+      { username: 'don', role: 'athlete', email: 'don@unc.edu', password: 'don', team: 'B' },
+      { username: 'bob', role: 'coach', email: 'bob@unc.edu', password: 'bob', team: 'A' },
+      { username: 'cob', role: 'coach', email: 'cob@unc.edu', password: 'cob', team: 'B' },
+      { username: 'simon', role: 'admin', email: 'simon@unc.edu', password: 'simon', team: ' ' }
     ];
 
     const strengthData = {
       jon: { biceps: [70, 72, 75, 78], triceps: [60, 62, 65, 68], quads: [150, 155, 160, 165], hamstrings: [90, 95, 100, 105] },
-      ron: { biceps: [65, 68, 71, 75], triceps: [58, 60, 63, 67], quads: [140, 145, 150, 155], hamstrings: [85, 88, 92, 96] }
+      ron: { biceps: [65, 68, 71, 75], triceps: [58, 60, 63, 67], quads: [140, 145, 150, 155], hamstrings: [85, 88, 92, 96] },
+      don: { biceps: [65, 62, 71, 50], triceps: [58, 60, 63, 67], quads: [140, 145, 150, 155], hamstrings: [85, 88, 92, 96] }
     };
 
     let currentUser = null;
+    let currentAthlete = null;
     let chartInstance = null;
 
     document.getElementById('login-form').addEventListener('submit', function(e) {
@@ -105,19 +134,107 @@
         document.getElementById('dashboard').style.display = 'block';
         document.getElementById('user-name').textContent = user.username;
         document.getElementById('user-role').textContent = `Role: ${user.role}`;
-        renderChart(currentUser, 'biceps', 'line');
+        
+        if (user.role === 'coach') {
+          document.getElementById('coach-controls').style.display = 'block';
+          document.getElementById('message-item').style.display = 'block';
+          updateAthleteSelect(user.team); // Filter athletes by team
+          currentAthlete = 'jon'; // Default to the first athlete
+          renderChart(currentAthlete, 'biceps', 'line');
+        } else if (user.role === 'admin') {
+          document.getElementById('admin-controls').style.display = 'block';
+          updateTeamSelect(); // Allow the admin to select a team
+          currentAthlete = 'jon'; // Default to the first athlete
+          renderChart(currentAthlete, 'biceps', 'line');
+        } else {
+          currentAthlete = currentUser;
+          renderChart(currentAthlete, 'biceps', 'line');
+        }
       } else {
         alert('Invalid credentials, try again.');
       }
     });
 
+    function updateAthleteSelect(coachTeam) {
+      const athleteSelect = document.getElementById('athlete-select');
+      athleteSelect.innerHTML = ''; // Clear existing options
+
+      const teamAthletes = users.filter(user => user.role === 'athlete' && user.team === coachTeam);
+      teamAthletes.forEach(athlete => {
+        const option = document.createElement('option');
+        option.value = athlete.username;
+        option.textContent = athlete.username.charAt(0).toUpperCase() + athlete.username.slice(1);
+        athleteSelect.appendChild(option);
+      });
+    }
+
+    function updateTeamSelect() {
+      const teamSelect = document.getElementById('team-select');
+      const athleteSelect = document.getElementById('athlete-select');
+      
+      teamSelect.addEventListener('change', function() {
+        // Update athlete options based on the selected team
+        updateAdminAthleteSelect(teamSelect.value);
+
+        // Automatically select the first athlete
+        athleteSelect.selectedIndex = 0;
+      });
+
+      // Set initial selection when the page loads
+      updateAdminAthleteSelect(teamSelect.value);
+      athleteSelect.selectedIndex = 0;
+
+      updateAthleteData();
+    }
+
+    function updateAdminAthleteSelect(team) {
+      const athleteSelect = document.getElementById('admin-athlete-select');
+      athleteSelect.innerHTML = ''; // Clear existing options
+
+      const teamAthletes = users.filter(user => user.role === 'athlete' && user.team === team);
+      teamAthletes.forEach(athlete => {
+        const option = document.createElement('option');
+        option.value = athlete.username;
+        option.textContent = athlete.username.charAt(0).toUpperCase() + athlete.username.slice(1);
+        athleteSelect.appendChild(option);
+      });
+      if (teamAthletes.length > 0) {
+        athleteSelect.selectedIndex = 0;  // Select the first athlete
+      }
+    }
+
+    function updateAthleteData() {
+      const athleteSelect = document.getElementById('athlete-select');
+      const selectedAthlete = athleteSelect.value;
+
+      // Find the selected athlete from the users array
+      const athleteData = users.find(user => user.username === selectedAthlete && user.role === 'athlete');
+
+      if (athleteData) {
+        // Display athlete's data (make sure to replace these with your actual data fields)
+        document.getElementById('athlete-name').textContent = athleteData.username;
+        document.getElementById('athlete-team').textContent = athleteData.team; // Example
+        // Add more data fields as required (e.g. performance stats)
+      }
+    }
+
     document.getElementById('muscle-select').addEventListener('change', updateChart);
     document.getElementById('graph-type').addEventListener('change', updateChart);
+    document.getElementById('athlete-select').addEventListener('change', function(e) {
+      currentAthlete = e.target.value;
+      renderChart(currentAthlete, document.getElementById('muscle-select').value, document.getElementById('graph-type').value);
+      updateAthleteData();
+    });
+    document.getElementById('admin-athlete-select').addEventListener('change', function(e) {
+      currentAthlete = e.target.value;
+      renderChart(currentAthlete, document.getElementById('muscle-select').value, document.getElementById('graph-type').value);
+      updateAthleteData();
+    });
 
     function updateChart() {
       const selectedMuscle = document.getElementById('muscle-select').value;
       const selectedGraphType = document.getElementById('graph-type').value;
-      renderChart(currentUser, selectedMuscle, selectedGraphType);
+      renderChart(currentAthlete, selectedMuscle, selectedGraphType);
     }
 
     function renderChart(athlete, muscle, chartType) {
@@ -143,17 +260,25 @@
           scales: { y: { beginAtZero: true } }
         }
       });
+
+      document.getElementById('athlete-name').textContent = athlete.charAt(0).toUpperCase() + athlete.slice(1) + "'s Strength Data";
     }
 
     function signOut() {
       document.getElementById('dashboard').style.display = 'none';
       document.querySelector('.login-container').style.display = 'flex';
+      location.reload();
     }
 
     // Sidebar Toggle
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
       sidebar.classList.toggle('show');
+    }
+
+    // Show Messages (for coaches)
+    function showMessages() {
+      alert('Messages feature coming soon!');
     }
 
     // Show selected page
@@ -164,3 +289,4 @@
 
 </body>
 </html>
+
